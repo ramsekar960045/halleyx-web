@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Portal</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 1.5rem;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+            text-align: left;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #555;
+        }
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .toggle-form {
+            color: #007bff;
+            cursor: pointer;
+        }
+        #message {
+            margin-top: 1rem;
+            color: red;
+        }
+        #dashboard {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Login Form -->
+        <div id="login-view">
+            <h1>Customer Login</h1>
+            <form id="login">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="login-email" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="login-password" name="password" required>
+                </div>
+                <button type="submit">Login</button>
+            </form>
+            <p>New here? <span class="toggle-form" onclick="toggleViews()">Create an account</span></p>
+        </div>
+
+        <!-- Registration Form -->
+        <div id="register-view" style="display: none;">
+            <h1>Create Account</h1>
+            <form id="register">
+                <div class="form-group"><label for="name">Name</label><input type="text" id="register-name" required></div>
+                <div class="form-group"><label for="email">Email</label><input type="email" id="register-email" required></div>
+                <div class="form-group"><label for="password">Password</label><input type="password" id="register-password" required></div>
+                <button type="submit">Register</button>
+            </form>
+            <p>Already have an account? <span class="toggle-form" onclick="toggleViews()">Login here</span></p>
+        </div>
+
+
+        <div id="dashboard">
+            <h1>Dashboard</h1>
+            <p id="dashboard-message"></p>
+            <button id="logout">Logout</button>
+        </div>
+
+        <p id="message"></p>
+    </div>
+
+    <script>
+        const loginView = document.getElementById('login-view');
+        const registerView = document.getElementById('register-view');
+        const dashboardContainer = document.getElementById('dashboard');
+        const loginForm = document.getElementById('login');
+        const registerForm = document.getElementById('register');
+        const messageEl = document.getElementById('message');
+        const dashboardMessageEl = document.getElementById('dashboard-message');
+        const logoutButton = document.getElementById('logout');
+
+        const API_URL = 'http://localhost:5000';
+
+        // --- Event Listeners ---
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            messageEl.textContent = '';
+
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            try {
+                const res = await fetch(`${API_URL}/api/customers/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }, // Corrected header
+                    body: JSON.stringify({ email, password }),
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(data.message || 'Login failed');
+                }
+
+                localStorage.setItem('authToken', data.token);
+                await showDashboard();
+            } catch (error) {
+                messageEl.textContent = error.message;
+            }
+        });
+
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            messageEl.textContent = '';
+
+            const name = document.getElementById('register-name').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+
+            try {
+                const res = await fetch(`${API_URL}/api/customers`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, password }),
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(data.message || 'Registration failed');
+                }
+
+                localStorage.setItem('authToken', data.token);
+                await showDashboard();
+            } catch (error) {
+                messageEl.textContent = error.message;
+            }
+        });
+
+        // --- View Management ---
+        async function showDashboard() {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                showLogin();
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_URL}/api/customers/profile`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(data.message || 'Could not fetch dashboard data.');
+                }
+
+                loginView.style.display = 'none';
+                registerView.style.display = 'none';
+                dashboardContainer.style.display = 'block';
+                dashboardMessageEl.textContent = `Welcome to your profile, ${data.name}!`;
+            } catch (error) {
+                localStorage.removeItem('authToken');
+                showLogin();
+                messageEl.textContent = `Session error: ${error.message}. Please log in again.`;
+            }
+        }
+
+        function showLogin() {
+            loginView.style.display = 'block';
+            registerView.style.display = 'none';
+            dashboardContainer.style.display = 'none';
+            messageEl.textContent = '';
+        }
+
+        function toggleViews() {
+            messageEl.textContent = '';
+            if (loginView.style.display === 'none') {
+                loginView.style.display = 'block';
+                registerView.style.display = 'none';
+            } else {
+                loginView.style.display = 'none';
+                registerView.style.display = 'block';
+            }
+        }
+
+        logoutButton.addEventListener('click', () => {
+            localStorage.removeItem('authToken');
+            showLogin();
+        });
+
+        // On page load, check if we are already logged in
+        document.addEventListener('DOMContentLoaded', showDashboard);
+    </script>
+
+</body>
+</html>

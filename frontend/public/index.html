@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>HalleyX Admin Login</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+  <div class="bg-white p-8 rounded shadow-md w-full max-w-sm">
+    <h2 class="text-2xl font-bold text-center mb-6">Admin Login</h2>
+    <form id="loginForm">
+      <div class="mb-4">
+        <label for="email" class="block text-gray-700">Email</label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          class="w-full px-3 py-2 border rounded"
+          placeholder="admin@example.com"
+          required
+        />
+      </div>
+      <div class="mb-4">
+        <label for="password" class="block text-gray-700">Password</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          class="w-full px-3 py-2 border rounded"
+          placeholder="••••••••"
+          required
+        />
+      </div>
+      <button
+        type="submit"
+        class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-wait"
+      >
+        Login
+      </button>
+      <p id="success" class="text-green-500 text-sm mt-3 hidden"></p>
+      <p id="error" class="text-red-500 text-sm mt-3 hidden"></p>
+    </form>
+  </div>
+
+  <script>
+    const loginForm = document.getElementById('loginForm');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const submitButton = loginForm.querySelector('button[type="submit"]');
+    const errorEl = document.getElementById('error');
+    const successEl = document.getElementById('success');
+
+    const API_BASE_URL = 'http://localhost:5000';
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      // Hide previous messages
+      errorEl.classList.add('hidden');
+      successEl.classList.add('hidden');
+
+      // Set loading state
+      submitButton.disabled = true;
+      submitButton.textContent = 'Logging in...';
+
+      const email = emailInput.value;
+      const password = passwordInput.value;
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          successEl.textContent = 'Login successful! Redirecting...';
+          successEl.classList.remove('hidden');
+
+          // Store the token for future authenticated requests
+          localStorage.setItem('adminToken', data.token);
+          console.log('Token stored:', data.token);
+
+          // Redirect to a protected admin page after a short delay
+          setTimeout(() => {
+            window.location.href = '/admin/dashboard.html'; // Example redirect
+          }, 1500);
+        } else {
+          errorEl.textContent =
+            data.message || 'Login failed. Please check your credentials.';
+          errorEl.classList.remove('hidden');
+          passwordInput.value = ''; // Clear password for security
+          passwordInput.focus();
+          // Reset button state
+          submitButton.disabled = false;
+          submitButton.textContent = 'Login';
+        }
+      } catch (err) {
+        console.error('Login error:', err);
+        errorEl.textContent =
+          'A server error occurred. Please try again later.';
+        errorEl.classList.remove('hidden');
+        // Reset button state
+        submitButton.disabled = false;
+        submitButton.textContent = 'Login';
+      }
+    });
+  </script>
+</body>
+</html>
